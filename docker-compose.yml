@@ -1,0 +1,67 @@
+# 6개 '독립 컨테이너' — Melkor×3(코어 1/2/3) + Lfuzzer×3(코어 4/5/6).
+#   각 컨테이너: 단일코어(cpuset 핀) · RAM 4GB 상한 · 6시간 · 전량 낱개저장 · 별도 출력폴더.
+#   같은 단일시드 prac.elf(레포에 커밋). RUN_SEED 로 인스턴스마다 난수 발산.
+#
+# 준비:  mkdir -p output/melkor1 output/melkor2 output/melkor3 \
+#                 output/lfuzzer1 output/lfuzzer2 output/lfuzzer3
+# 실행:  docker compose up --build -d
+# 확인:  docker compose ps ; docker stats ; docker compose logs -f melkor1
+# 중지:  docker compose down
+#
+# ⚠️ 총자원: 코어 6개(cpuset 1~6) + RAM 24GB(6×4). 출력은 host 의 ./output/* (마운트)
+#    → 컨테이너를 지워도 파일이 남는다. 전량저장은 컨테이너당 시간당 수 GB → 디스크 여유 필수.
+
+x-fuzz: &fuzz
+  build:
+    context: .
+  image: ldso-fuzz-6h-saveall
+  mem_limit: 4g            # RAM 상한 4GB
+  memswap_limit: 4g        # 스왑 포함 4GB(=스왑 0). 초과 시 해당 컨테이너만 OOM-kill
+  restart: "no"
+
+services:
+  # ── Melkor ×3 : 코어 1, 2, 3 ────────────────────────────────
+  melkor1:
+    <<: *fuzz
+    container_name: fuzz_melkor1
+    cpuset: "1"
+    environment: { RUN_SEED: "0" }
+    volumes: [ "./output/melkor1:/output" ]
+    command: [ "bash", "-lc", "bash /root/kit/run_saveall_6h.sh melkor 21600" ]
+  melkor2:
+    <<: *fuzz
+    container_name: fuzz_melkor2
+    cpuset: "2"
+    environment: { RUN_SEED: "1" }
+    volumes: [ "./output/melkor2:/output" ]
+    command: [ "bash", "-lc", "bash /root/kit/run_saveall_6h.sh melkor 21600" ]
+  melkor3:
+    <<: *fuzz
+    container_name: fuzz_melkor3
+    cpuset: "3"
+    environment: { RUN_SEED: "2" }
+    volumes: [ "./output/melkor3:/output" ]
+    command: [ "bash", "-lc", "bash /root/kit/run_saveall_6h.sh melkor 21600" ]
+
+  # ── Lfuzzer ×3 : 코어 4, 5, 6 (seed 0/1/2 로 발산) ───────────
+  lfuzzer1:
+    <<: *fuzz
+    container_name: fuzz_lfuzzer1
+    cpuset: "4"
+    environment: { RUN_SEED: "0" }
+    volumes: [ "./output/lfuzzer1:/output" ]
+    command: [ "bash", "-lc", "bash /root/kit/run_saveall_6h.sh lfuzzer 21600" ]
+  lfuzzer2:
+    <<: *fuzz
+    container_name: fuzz_lfuzzer2
+    cpuset: "5"
+    environment: { RUN_SEED: "1" }
+    volumes: [ "./output/lfuzzer2:/output" ]
+    command: [ "bash", "-lc", "bash /root/kit/run_saveall_6h.sh lfuzzer 21600" ]
+  lfuzzer3:
+    <<: *fuzz
+    container_name: fuzz_lfuzzer3
+    cpuset: "6"
+    environment: { RUN_SEED: "2" }
+    volumes: [ "./output/lfuzzer3:/output" ]
+    command: [ "bash", "-lc", "bash /root/kit/run_saveall_6h.sh lfuzzer 21600" ]

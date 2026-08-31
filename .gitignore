@@ -1,0 +1,8 @@
+# 퍼징 산출물(전량저장 .so) — 절대 커밋 금지
+output/
+fuzz_out/
+*.so
+!seeds/*.elf
+__pycache__/
+*.pyc
+.omc/
