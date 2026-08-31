@@ -86,6 +86,17 @@ docker compose down
 bash run_all_6.sh 60         # 60초짜리 6컨테이너 스모크 (docker run -d = 셸로 바로 복귀)
 ```
 
+**6개 한눈에 확인** — `status_6.sh` 하나면 6개 상태·CPU핀·파일수·최근로그가 표로 나온다:
+```bash
+bash status_6.sh             # 스냅샷 1회
+watch -n5 bash status_6.sh   # 5초마다 갱신(파일수 늘어나는지 실시간)
+# 예)
+#  컨테이너         상태     CPU핀  파일수  최근로그
+#  fuzz_melkor1    running  1      12043   execs=12000 crash=... rate=36/s
+#  fuzz_lfuzzer1   running  4      98110   execs=98000 crash=... rate=205/s
+```
+개별로 보려면: `docker logs -f fuzz_melkor1` (melkor도 이제 200개마다 rate 로그 찍음).
+
 | # | 확인 항목 | 명령 | 정상 기대값 |
 |---|---|---|---|
 | 1 | **6컨테이너 기동** | `docker ps --filter name=fuzz_` | fuzz_melkor1..3 · fuzz_lfuzzer1..3 (60초간 Up) |
