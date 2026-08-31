@@ -95,6 +95,10 @@ def main():
                 if rc is not None and is_crash(rc):
                     crashes += 1
                     crash_log.write("%09d,%d\n" % (n, rc))
+                if n % 200 == 0:      # 진행로그(살아있음 표시) — lfuzzer 와 동일 패턴
+                    el = time.time() - t0
+                    print("  execs=%d crash=%d rate=%.1f/s elapsed=%.0fs"
+                          % (n, crashes, n / max(el, 1e-9), el), flush=True)
             shutil.rmtree(orcs, ignore_errors=True)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
