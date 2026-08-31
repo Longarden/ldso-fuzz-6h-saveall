@@ -81,16 +81,18 @@ def main():
                 if time.time() >= deadline:
                     break
                 n += 1
-                # 저장 전에 tmp 에서 크래시 판정(레이스 없음).
+                # tmp 에서 크래시 판정(레이스 없음).
                 rc = run_loader(orc)
-                if rc is not None and is_crash(rc):
-                    crashes += 1
-                    crash_log.write("%09d,%d\n" % (n, rc))
-                # ★ 마운트 폴더에 '직접' 연번 저장.
+                # ★ 마운트 폴더에 '직접' 연번 저장. 저장 성공 후에만 크래시 로그
+                #   (이동 실패 시 연번-로그 desync 방지).
                 try:
                     shutil.move(orc, os.path.join(OUT, "%09d.so" % n))
                 except Exception:
                     n -= 1
+                    continue
+                if rc is not None and is_crash(rc):
+                    crashes += 1
+                    crash_log.write("%09d,%d\n" % (n, rc))
             shutil.rmtree(orcs, ignore_errors=True)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
