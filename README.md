@@ -24,31 +24,48 @@ glibc 동적 링커 `ld.so` 를 대상으로 **Lfuzzer**(hetero 강도혼합·EL
 
 **Melkor ×3(코어 1/2/3) + Lfuzzer ×3(코어 4/5/6)**, 각 컨테이너는
 **단일코어(`cpuset` 핀) · RAM 4GB 상한 · 6시간 · 전량 직접저장 · 별도 출력폴더**.
-Lfuzzer 는 결정론적 시드라 인스턴스별 `RUN_SEED` 0/1/2 로 발산(3개가 서로 다른 변이),
-Melkor 는 자체 난수라 자연 발산.
+**모두 동일 설정·동일 단일시드 prac.elf**. 두 퍼저 다 '자체난수'라 3개가 자연 발산한다
+(Melkor=바이너리가 time/pid 시드, Lfuzzer=러너가 OS 엔트로피로 시딩, 실제 시드는 로그에 기록).
+
+> ⚠️ **WSL2 사용자: 반드시 WSL 홈(`~/`, ext4)에 클론·실행하라. `/mnt/c`(윈도우 드라이브) 금지.**
+> docker.io 가 `/mnt/c` 를 drvfs 로 바인드마운트하면 쓰기가 10배 이상 느려 전량저장이 병목된다
+> (실측: 같은 18초에 ext4 3740개 vs /mnt/c 315개). Docker Desktop(윈도우/맥)은 해당 없음.
+
+### (A-1) compose 없이 — `run_all_6.sh` (권장, 어디서나 동작)
+
+우분투 `docker.io` 처럼 **compose 플러그인이 없어도** 되는 plain `docker run` 런처.
 
 ```bash
 git clone https://github.com/Longarden/ldso-fuzz-6h-saveall.git
 cd ldso-fuzz-6h-saveall
 
-# 출력폴더(호스트, 컨테이너별 분리) 생성
-mkdir -p output/melkor1 output/melkor2 output/melkor3 \
-         output/lfuzzer1 output/lfuzzer2 output/lfuzzer3
-
-# 6개 컨테이너 백그라운드 기동 (prac.elf 는 이미 레포에 포함)
-docker compose up --build -d
+bash run_all_6.sh            # 6h 기동 (빌드→6컨테이너 docker run -d)
+#   먼저 짧게 시험하려면:  bash run_all_6.sh 60   # 60초
 
 # 상태·자원·로그
-docker compose ps
+docker ps
 docker stats                       # 컨테이너별 CPU%·RAM(4GB 대비) 실시간
-docker compose logs -f melkor1     # melkor1..3 / lfuzzer1..3
+docker logs -f fuzz_melkor1        # fuzz_melkor1..3 / fuzz_lfuzzer1..3
 
 # 결과(호스트에 바로, 컨테이너 밖) — 낱개·연번 .so (압축 없음)
 ls output/lfuzzer1/ | sort | tail  # 000000001.so 000000002.so ...
 ls output/melkor1/*.so | wc -l     # 총 생성 개수
 cat output/lfuzzer1/_crashes.csv   # 크래시난 연번,rc 목록
 
-docker compose down                # 전체 중지
+bash stop_all_6.sh                 # 전체 중지·제거(출력 파일은 남음)
+```
+
+### (A-2) compose 로 (플러그인 있을 때만)
+
+`docker compose` v2 플러그인이 설치돼 있어야 한다(`docker compose version` 으로 확인).
+없으면 `sudo apt install docker-compose-v2` 하거나 (A-1)을 쓰라.
+
+```bash
+mkdir -p output/melkor1 output/melkor2 output/melkor3 \
+         output/lfuzzer1 output/lfuzzer2 output/lfuzzer3
+docker compose up --build -d
+docker compose ps ; docker stats ; docker compose logs -f melkor1
+docker compose down
 ```
 
 > 각 컨테이너 안에서 퍼저가 `/output`(=호스트 `./output/<name>`)에 **직접** `.so` 를 쓴다.
@@ -83,8 +100,9 @@ export SEED=$KIT/seeds/prac.elf         # 단일시드(커밋된 확정본)
 
 # 4) 6시간 실행 (여유 큰 볼륨! WSL 홈 ext4 권장, /mnt/c 금지)
 mkdir -p ~/out_lfuzzer ~/out_melkor
-OUTDIR=~/out_lfuzzer RUN_SEED=0 setsid nohup bash "$KIT/run_saveall_6h.sh" lfuzzer 21600 >~/lf.log 2>&1 </dev/null &
-OUTDIR=~/out_melkor  RUN_SEED=0 setsid nohup bash "$KIT/run_saveall_6h.sh" melkor  21600 >~/mk.log 2>&1 </dev/null &
+OUTDIR=~/out_lfuzzer setsid nohup bash "$KIT/run_saveall_6h.sh" lfuzzer 21600 >~/lf.log 2>&1 </dev/null &
+OUTDIR=~/out_melkor  setsid nohup bash "$KIT/run_saveall_6h.sh" melkor  21600 >~/mk.log 2>&1 </dev/null &
+# (시드 미지정 = 자체난수. 재현이 필요하면 끝에 정수 시드: "... lfuzzer 21600 12345")
 ```
 
 진행 확인:
@@ -133,18 +151,19 @@ ls output/lfuzzer1/*.so | wc -l              # 여전히 파일이 남아있음 
 | 변수 | 기본 | 설명 |
 |---|---|---|
 | `OUTDIR` | Docker=`/output`, 로컬=`~/fuzz_out` | 최종 저장 단일폴더(마운트). 낱개·연번 직접저장 |
-| `RUN_SEED` | `0` | 인스턴스별 발산 시드. Lfuzzer=결정론적 → 필수, Melkor=참고 |
 | `SEED` | `~/seed_6h/prac.elf` | 단일시드 파일 경로 |
 | `LFUZZER` | `~/lfuzzer` | Lfuzzer 뮤테이터 저장소 |
 | `MELKOR_BIN` | `~/melkor_repro/.../melkor` | Melkor 바이너리 |
 | `LDSO` | `/lib64/ld-linux-x86-64.so.2` | SUT 로더 |
 | `LFUZZER_TIMEOUT` | `3` | 로더 1회 실행 timeout(초) |
 
-## 왜 Lfuzzer 는 시드를 달리 줘야 하나
-Lfuzzer 뮤테이터는 `StructureAwareMutator(seed=RUN_SEED)` 로 **결정론적 시드된 PRNG**다.
-확률적(hetero 롤·축 선택)이지만 **같은 시드면 매 실행이 바이트 단위로 동일**하다.
-→ Lfuzzer 3개를 같은 시드로 돌리면 3개가 완전히 똑같다(무의미). 그래서 `RUN_SEED` 0/1/2.
-반면 Melkor 바이너리는 time/pid 로 자체 난수 → 같은 설정이어도 3개가 자연히 다르다.
+## 시드·난수 설계 (동일 시드 + 무조건 자체난수)
+- **ELF 시드는 prac.elf 딱 1개**, 두 퍼저·6개 컨테이너 전부 동일하게 이걸 base 로 변이.
+- **RNG 는 둘 다 무조건 자체난수** → 같은 시드·같은 설정이어도 컨테이너 3개가 자연히 다른 변이:
+  - Melkor: C 바이너리가 time/pid 로 자체 시드.
+  - Lfuzzer: 뮤테이터 `StructureAwareMutator(seed=X)` 는 원래 X로 '결정론적 시딩'이라,
+    러너(`run_lfuzzer_ld.py`)가 매 프로세스 **OS 엔트로피(os.urandom)** 로 X를 새로 뽑아
+    자체난수화한다. 실제 사용한 X 는 로그(`rng_seed=… (self-random)`)에 기록된다.
 
 ## 결과 해석
 - 크래시 대부분 = PC가 쓰레기주소로 점프(와일드-PC). 의미있는 신호는 **이름있는 로더함수**

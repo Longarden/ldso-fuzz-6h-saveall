@@ -15,7 +15,6 @@
 set -u
 MODE=${1:?usage: run_saveall_6h.sh <lfuzzer|melkor> [seconds] [rng_seed]}
 TOTAL=${2:-21600}
-RSEED=${3:-${RUN_SEED:-0}}
 LFUZZER=${LFUZZER:-$HOME/lfuzzer}
 KIT=${KIT:-$(cd "$(dirname "$0")" && pwd)}
 SEED=${SEED:-$HOME/seed_6h/prac.elf}
@@ -32,11 +31,11 @@ if [ ! -f "$SEED" ]; then echo "[6h:$MODE] 시드 없음: $SEED"; exit 1; fi
 "$LD" "$SEED" >/dev/null 2>&1; brc=$?
 if [ "$brc" -ge 128 ]; then echo "[6h:$MODE] 시드 baseline 크래시(rc=$brc) → 중단"; exit 1; fi
 
-echo "[6h:$MODE] $(date) 단일시드=$SEED rng_seed=$RSEED → 전량·낱개·연번 직접저장 → $OUTDIR"
+echo "[6h:$MODE] $(date) 단일시드=$SEED → 전량·낱개·연번 직접저장(자체난수) → $OUTDIR"
 
-# 퍼저가 $OUTDIR 에 곧바로 NNNNNNNNN.so 를 쓴다(수집기 없음).
+# 퍼저가 $OUTDIR 에 곧바로 NNNNNNNNN.so 를 쓴다(수집기 없음). 둘 다 무조건 자체난수.
 if [ "$MODE" = "lfuzzer" ]; then
-  exec python3 "$KIT/run_lfuzzer_ld.py" "$SEED" "$OUTDIR" "$TOTAL" "$RSEED"
+  exec python3 "$KIT/run_lfuzzer_ld.py" "$SEED" "$OUTDIR" "$TOTAL"
 else
   exec python3 "$KIT/run_melkor_ld.py" "$SEED" "$OUTDIR" "$TOTAL" 40 10
 fi

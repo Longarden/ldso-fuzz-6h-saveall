@@ -26,7 +26,9 @@ from lfuzzer.mutators import structure_aware as SA
 SEED_PATH = os.path.expanduser(sys.argv[1])
 OUT       = os.path.expanduser(sys.argv[2])
 SECS      = float(sys.argv[3])
-RSEED     = int(sys.argv[4]) if len(sys.argv) > 4 else 0
+# ★ 무조건 자체난수: OS 엔트로피(os.urandom)로 매 프로세스 새 시드 → 인스턴스마다 발산.
+#   실제 사용한 시드는 로그에 기록(사후 확인용). 4번째 인자는 받지 않는다.
+RSEED     = int.from_bytes(os.urandom(8), "little")
 LOADER    = os.environ.get("LDSO", "/lib64/ld-linux-x86-64.so.2")
 TIMEOUT   = float(os.environ.get("LFUZZER_TIMEOUT", "3"))
 
@@ -59,8 +61,9 @@ def main():
     crashes = 0
     t0 = time.time()
     deadline = t0 + SECS
-    print("[lfuzzer] seed=%s out=%s secs=%.0f rng_seed=%d hetero=%s → 전량 직접저장"
-          % (SEED_PATH, OUT, SECS, RSEED, os.environ.get("LFUZZER_HETERO", "1")), flush=True)
+    print("[lfuzzer] seed=%s out=%s secs=%.0f rng_seed=%d(self-random) hetero=%s → 전량 직접저장"
+          % (SEED_PATH, OUT, SECS, RSEED,
+             os.environ.get("LFUZZER_HETERO", "1")), flush=True)
 
     while time.time() < deadline:
         mutant = mut.fuzz(bytes(seed), None, max(len(seed) * 2, 4096))
