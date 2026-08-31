@@ -71,9 +71,9 @@ sudo apt update && sudo apt install -y build-essential gcc git python3 binutils
 git clone -b feat/coverage-guided-upgrade https://github.com/Longarden/lfuzzer.git ~/lfuzzer
 export LFUZZER=~/lfuzzer
 
-# 2) Melkor 빌드
+# 2) Melkor 빌드 (GCC 10+ 는 -fcommon 필요: 옛 코드의 헤더 전역변수 중복정의 링크에러 회피)
 git clone https://github.com/IOActive/Melkor_ELF_Fuzzer.git ~/melkor_repro/Melkor_ELF_Fuzzer
-make -C ~/melkor_repro/Melkor_ELF_Fuzzer
+make -C ~/melkor_repro/Melkor_ELF_Fuzzer melkor CC="gcc -fcommon"
 export MELKOR_BIN=~/melkor_repro/Melkor_ELF_Fuzzer/melkor
 
 # 3) 시드(레포에 포함) 배치 + 이 키트 폴더

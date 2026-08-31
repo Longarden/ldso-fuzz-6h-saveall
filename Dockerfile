@@ -16,9 +16,12 @@ RUN git clone --depth 1 -b feat/coverage-guided-upgrade \
 ENV LFUZZER=/root/lfuzzer
 
 # 2) Melkor 빌드 (public)
+#    GCC 10+ 는 -fno-common 이 기본 → Melkor(옛 코드)의 헤더 전역변수(PAGESIZE 등)가
+#    'multiple definition' 링크에러를 낸다. CC="gcc -fcommon" 로 옛 동작 복원.
+#    melkor 타깃만 빌드(templ/envtools 테스트도구는 불필요).
 RUN git clone --depth 1 https://github.com/IOActive/Melkor_ELF_Fuzzer.git \
         /root/melkor_repro/Melkor_ELF_Fuzzer \
-    && make -C /root/melkor_repro/Melkor_ELF_Fuzzer
+    && make -C /root/melkor_repro/Melkor_ELF_Fuzzer melkor CC="gcc -fcommon"
 ENV MELKOR_BIN=/root/melkor_repro/Melkor_ELF_Fuzzer/melkor
 
 # 3) 이 키트 스크립트(전량저장 러너 + 오케스트레이터)
