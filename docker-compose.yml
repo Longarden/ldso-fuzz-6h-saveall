@@ -3,7 +3,7 @@
 #   ★ 모두 '동일 설정·동일 단일시드 prac.elf'. 두 퍼저 다 '자체난수'라 3개가 자연 발산:
 #     - Melkor: C 바이너리가 time/pid 로 자체 시드
 #     - Lfuzzer: 러너가 시드 미지정 시 OS 엔트로피(os.urandom)로 자체 시딩(로그에 실제 시드 기록)
-#   (재현이 필요하면 command 뒤에 시드 정수를 붙이면 결정론 고정 가능. 예: "... lfuzzer 21600 12345")
+#   (난수는 무조건 자체난수 — 같은 prac.elf라도 6개가 서로 다른 변이 생성)
 #
 # 준비:  mkdir -p output/melkor1 output/melkor2 output/melkor3 \
 #                 output/lfuzzer1 output/lfuzzer2 output/lfuzzer3
