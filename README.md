@@ -146,7 +146,7 @@ export SEED=$KIT/seeds/prac.elf         # 단일시드(커밋된 확정본)
 mkdir -p ~/out_lfuzzer ~/out_melkor
 OUTDIR=~/out_lfuzzer setsid nohup bash "$KIT/run_saveall_6h.sh" lfuzzer 21600 >~/lf.log 2>&1 </dev/null &
 OUTDIR=~/out_melkor  setsid nohup bash "$KIT/run_saveall_6h.sh" melkor  21600 >~/mk.log 2>&1 </dev/null &
-# (시드 미지정 = 자체난수. 재현이 필요하면 끝에 정수 시드: "... lfuzzer 21600 12345")
+# (난수는 무조건 자체난수 — 매 실행 다른 변이. 실제 사용한 시드는 로그 rng_seed=… 에 기록됨)
 ```
 
 진행 확인:

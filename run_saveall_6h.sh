@@ -5,15 +5,15 @@
 #   ★ 압축 없음.  ★ 수집기/스테이징 없음(퍼저가 $OUTDIR 에 곧바로 씀).
 #   ★ 크래시만이 아니라 전량 저장.  ★ 단일시드 prac.elf 로 두 퍼저 공통.
 #
-# 사용: bash run_saveall_6h.sh <lfuzzer|melkor> [seconds] [rng_seed]
-#   기본 21600초(6h). rng_seed 는 인스턴스별 발산용(기본 0).
+# 사용: bash run_saveall_6h.sh <lfuzzer|melkor> [seconds]
+#   기본 21600초(6h). 난수는 무조건 자체난수(둘 다) — 시드 인자 없음.
 # 환경:
 #   OUTDIR   최종 저장 폴더(마운트 볼륨). Docker=/output. 미지정 시 ~/fuzz_out.
 #   LFUZZER  Lfuzzer 뮤테이터 저장소(~/lfuzzer), KIT 이 스크립트 폴더,
 #   SEED     단일시드 파일 경로(기본 ~/seed_6h/prac.elf)
 #   MELKOR_BIN, LDSO
 set -u
-MODE=${1:?usage: run_saveall_6h.sh <lfuzzer|melkor> [seconds] [rng_seed]}
+MODE=${1:?usage: run_saveall_6h.sh <lfuzzer|melkor> [seconds]}
 TOTAL=${2:-21600}
 LFUZZER=${LFUZZER:-$HOME/lfuzzer}
 KIT=${KIT:-$(cd "$(dirname "$0")" && pwd)}
