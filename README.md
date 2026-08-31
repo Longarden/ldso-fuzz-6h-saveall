@@ -78,6 +78,50 @@ docker compose down
 
 ---
 
+## ✅ 정상 작동 검증 (본run 전 60초 헬스체크)
+
+6시간 본run 전에 **반드시 60초 스모크로 6가지를 확인**하라. 아래 명령과 "정상 기대값"이 맞으면 OK.
+
+```bash
+bash run_all_6.sh 60         # 60초짜리 6컨테이너 스모크 (docker run -d = 셸로 바로 복귀)
+```
+
+| # | 확인 항목 | 명령 | 정상 기대값 |
+|---|---|---|---|
+| 1 | **6컨테이너 기동** | `docker ps --filter name=fuzz_` | fuzz_melkor1..3 · fuzz_lfuzzer1..3 (60초간 Up) |
+| 2 | **CPU 핀 + 4GB** | `docker inspect -f '{{.HostConfig.CpusetCpus}} {{.HostConfig.Memory}}' fuzz_lfuzzer1` | `4 4294967296` (=코어4·4GiB). melkor1=1 … lfuzzer3=6 |
+| 3 | **실시간 CPU/RAM** | `docker stats --no-stream` | 각 컨테이너 MEM `.. / 4GiB`, CPU 수십 % |
+| 4 | **폴더에 전량저장** | `ls output/lfuzzer1/*.so \| wc -l` | 60초에 수천 개(>0). Lfuzzer ~200/s, Melkor 낮음 |
+| 5 | **연번·무압축** | `ls output/lfuzzer1 \| sort \| head` | `000000001.so 000000002.so …` (zip 없음) |
+| 6 | **자체난수 발산** | `cmp output/lfuzzer1/000000001.so output/lfuzzer2/000000001.so` | `differ`(다름) = 3개가 서로 다른 변이 |
+
+60초 뒤 컨테이너는 **스스로 종료**(Exited)된다 — 정상이다. 파일은 그대로 남는다:
+
+```bash
+docker ps -a --filter name=fuzz_        # 6개 모두 "Exited (0)" = 정상 완주
+ls output/lfuzzer1/*.so | wc -l          # 컨테이너 종료 후에도 파일 남음(마운트 영속)
+grep -c . output/lfuzzer1/_crashes.csv   # 크래시난 변이 개수(연번,rc 기록)
+bash stop_all_6.sh                        # 중지만(삭제 안 함). 파일·컨테이너 모두 유지
+```
+
+> **컨테이너는 자동 삭제하지 않는다.** `stop_all_6.sh` 는 `docker stop`(중지)만 하고,
+> `run_all_6.sh` 도 같은 이름이 이미 있으면 건드리지 않고 건너뛴다.
+> 그래서 스모크로 만든 `fuzz_*`(Exited)가 남아 있으면 **본run이 그걸 건너뛴다.**
+> 본run 전에 스모크 컨테이너를 비우려면 **직접**: `docker rm fuzz_melkor1 fuzz_melkor2 fuzz_melkor3 fuzz_lfuzzer1 fuzz_lfuzzer2 fuzz_lfuzzer3`
+> (데이터는 마운트라 컨테이너를 지워도 `output/` 파일은 안전하다.)
+
+**하나라도 어긋나면:**
+- 1이 비었다 → `docker ps -a` 로 Exited 코드 확인. 빌드 실패면 `docker build .` 로그 보기.
+- 4가 0이다 → (WSL) `/mnt/c`에서 돌렸을 가능성. **`~/`(ext4)에서 다시.** / 권한이면 docker 그룹 확인.
+- `run_all_6.sh: No such file` → **구버전 클론**. `git pull` 또는 재클론(최신 HEAD 확인).
+
+정상이면 본run:
+```bash
+bash run_all_6.sh            # 6시간 (인자 없으면 21600초)
+```
+
+---
+
 ## 빠른 시작 (B) — 로컬(WSL2 / Ubuntu 24.04)
 
 ```bash

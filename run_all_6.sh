@@ -22,7 +22,11 @@ launch() {   # short_name  cpu_index  mode
   local sn=$1 cpu=$2 mode=$3
   local name="fuzz_$sn"
   mkdir -p "$OUT/$sn"
-  docker rm -f "$name" >/dev/null 2>&1 || true
+  # ★ 컨테이너는 절대 삭제하지 않는다. 같은 이름이 이미 있으면 건드리지 않고 건너뛴다.
+  if docker ps -a --format '{{.Names}}' | grep -qx "$name"; then
+    echo "  건너뜀: $name 이 이미 존재(삭제 안 함). 재기동하려면 직접 'docker rm $name' 후 다시 실행."
+    return
+  fi
   docker run -d --name "$name" \
     --cpuset-cpus "$cpu" --memory 4g --memory-swap 4g \
     -v "$OUT/$sn:/output" "$IMG" \
