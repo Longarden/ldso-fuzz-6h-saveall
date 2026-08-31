@@ -85,8 +85,10 @@ def main():
                 rc = run_loader(orc)
                 # ★ 마운트 폴더에 '직접' 연번 저장. 저장 성공 후에만 크래시 로그
                 #   (이동 실패 시 연번-로그 desync 방지).
+                dest = os.path.join(OUT, "%09d.so" % n)
                 try:
-                    shutil.move(orc, os.path.join(OUT, "%09d.so" % n))
+                    shutil.move(orc, dest)
+                    os.chmod(dest, 0o755)      # 원본 prac.elf 처럼 실행권한(+x) 부여
                 except Exception:
                     n -= 1
                     continue

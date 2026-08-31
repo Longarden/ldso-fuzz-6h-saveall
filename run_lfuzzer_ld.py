@@ -72,6 +72,7 @@ def main():
         path = os.path.join(OUT, "%09d.so" % n)
         with open(path, "wb") as f:
             f.write(bytes(mutant))
+        os.chmod(path, 0o755)          # 원본 prac.elf 처럼 실행권한(+x) 부여
         # 저장된 파일을 그대로 ld.so 로 실행 → 크래시 판정(파일은 어차피 보존).
         rc = run_loader(path)
         if rc is not None and is_crash(rc):
