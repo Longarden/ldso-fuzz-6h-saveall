@@ -30,8 +30,13 @@ for sn in melkor1 melkor2 melkor3 lfuzzer1 lfuzzer2 lfuzzer3; do
       el=$(( now - se )); elapsed=$(printf '%dh%02dm' $((el/3600)) $(((el%3600)/60)))
     else elapsed="?"; fi
   else elapsed="-"; fi
-  files=$(ls "$OUT/$sn"/*.so 2>/dev/null | wc -l)
-  log=$(docker logs --tail 1 "$name" 2>&1 | tr -d '\r' | tail -c 40)
+  # 파일수: 컨테이너의 '실제 /output 마운트 경로'를 docker inspect로 읽어서 거기서 센다.
+  #   (스크립트 위치·실행 경로에 의존하지 않게 — 0으로 잘못 세던 문제 수정)
+  src=$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/output"}}{{.Source}}{{end}}{{end}}' "$name" 2>/dev/null)
+  [ -z "$src" ] && src="$OUT/$sn"     # 컨테이너 없으면 기본 경로로 폴백
+  files=$(ls "$src"/*.so 2>/dev/null | wc -l)
+  # 최근 로그: 마지막 5줄 중 '빈 줄 제외한 마지막 실제 줄'을 잡고 앞 공백 제거(튼튼하게).
+  log=$(docker logs --tail 5 "$name" 2>&1 | tr -d '\r' | sed '/^[[:space:]]*$/d' | tail -1 | sed 's/^[[:space:]]*//' | tail -c 46)
   printf "%-15s %-9s %-6s %-10s %-9s %s\n" "$name" "${state:-none}" "${cpu:--}" "$elapsed" "$files" "$log"
 done
 echo "--- CPU/RAM 순간 사용량 ---"
